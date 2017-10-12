@@ -1,5 +1,8 @@
 Rails.application.routes.draw do
   root to: "payments#index"
-  resources :payments
-  # For details on the DSL available within this file, see http://guides.rubyonrails.org/routing.html
+  resources :payments do  
+    member do    
+      get :checkout, :cancel
+    end    
+  end
 end

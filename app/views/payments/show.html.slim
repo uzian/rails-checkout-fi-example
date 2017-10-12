@@ -1,0 +1,16 @@
+.row
+  .col-md-12
+    .page-header
+      h1="Payment Information"
+
+-@payment.payer_data.each do |key,value|
+  .row
+    .col-md-2
+      b= key.capitalize
+    .col-md-4
+      = value
+.row
+  .col-md-2
+    b Status
+  .col-md-4
+    = @result.nil? ? "Pending" : @result

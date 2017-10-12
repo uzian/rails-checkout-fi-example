@@ -1,10 +1,54 @@
-doctype 5
-html(lang="en")
-html
+doctype html
+html lang="en" 
   head
-    title CheckoutFiExample
-    = csrf_meta_tags 
+    meta charset="utf-8" /
+    meta content="width=device-width, initial-scale=1, shrink-to-fit=no" name="viewport" /
+    meta content="" name="description" /
+    meta content="" name="author" /
+    link href="../../../../favicon.ico" rel="icon" /
+    title checkout.fi rails example
     = stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' 
-    = javascript_include_tag 'application', 'data-turbolinks-track': 'reload' 
   body
-    = yield
+    nav.navbar.navbar-inverse
+      .container
+        .navbar-header
+          button.navbar-toggle type="button" data-target="#navbar" data-toggle="collapse" aria-expanded="false" aria-controls="navbar" 
+            span.icon-bar
+            span.icon-bar
+            span.icon-bar
+          .navbar-brand-container
+            a.navbar-brand href=root_path target='_top'       
+              ="Demo app for checkout.fi payments"
+        #navbar.navbar-collapse.collapse
+          ul.nav.navbar-nav.navbar-right
+            li.dropdown
+              a.dropdown-toggle data-toggle="dropdown" href="#" 
+                = "Menu"
+                ul.dropdown-menu aria-labelledby="courses" 
+                  li= link_to "Item1", root_path
+                  li= link_to "Item2", root_path
+    .container
+      -if flash.any?
+        -flash.each do |key, value|
+          -unless value.blank? || value.to_s=="true"
+            .alert.alert-dismissable#flashtext *{:class => [ bootstrap_class_for(key) ]}
+              button class="close" data-dismiss="alert" aria-hidden="true"
+                = "×"
+              = value
+      = yield
+    div style="min-height:200px"
+      br
+    footer.footer
+      .container
+        .row
+          .col-md-12
+            hr
+            a href=  "http://www.aimget.com"
+              | &copy;            
+              | aimget Oy
+
+    = javascript_include_tag "application" 
+    - if Rails.env.development? || Rails.env.test?
+      p
+        br
+        == debug(params) 

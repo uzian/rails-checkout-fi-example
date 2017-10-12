@@ -1,0 +1,27 @@
+= form_for @payment, :html => { :class => 'form' } do |f|
+  - if @payment.errors.any?
+    .row
+      .col-md-6.col-sm-12
+        .alert.alert-danger        
+          b= t("users.new.errors")
+          ul
+            - @payment.errors.full_messages.each do |msg|
+              li= msg   
+  - Payment::PAYER_DATA_FIELDS.each do |field|
+    .row
+      .col-md-6.col-sm-12
+        .form-group
+          = label_tag field.capitalize 
+          = text_field_tag "payer_data_#{field.downcase}", @payment.payer_data[field], class:"form-control"
+  .row
+    .col-md-1.col-sm-4
+      .form-group
+        = f.label :amount
+        = text_field_tag :amount, @payment.amount.to_i/100, disabled: true, class:"form-control"
+                  
+  .row
+    .col-md-.col-sm-12
+      br
+      = f.submit "Proceed with payment", :class => 'btn btn-primary'
+      | &nbsp;
+      = link_to "Cancel", root_path, class: "btn btn-danger"  

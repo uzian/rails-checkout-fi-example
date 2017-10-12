@@ -1,100 +1,165 @@
 class Payment < ApplicationRecord
 
-  # attr_accessor :version
-  # attr_accessor :language
-  # attr_accessor :country
-  # attr_accessor :currency
-  # attr_accessor :device
-  # attr_accessor :content
-  # attr_accessor :type
-  # attr_accessor :algorithm
-  # attr_accessor :merchant
-  # attr_accessor :password
-  # attr_accessor :stamp
-  # attr_accessor :amount
-  # attr_accessor :reference
-  # attr_accessor :message
-  # attr_accessor :return_
-  # attr_accessor :cancel
-  # attr_accessor :reject
-  # attr_accessor :delayed
-  # attr_accessor :delivery_date
-  # attr_accessor :firstname
-  # attr_accessor :familyname
-  # attr_accessor :address
-  # attr_accessor :postcode
-  # attr_accessor :postoffice
-  # attr_accessor :status
-  # attr_accessor :email 
-  # attr_accessor :phone
+  require 'openssl'
+
+  MAC_FIELDS = ['VERSION', 'STAMP', 'AMOUNT', 'REFERENCE', 'MESSAGE',
+    'LANGUAGE', 'MERCHANT', 'RETURN', 'CANCEL', 'REJECT',
+    'DELAYED', 'COUNTRY', 'CURRENCY', 'DEVICE', 'CONTENT',
+    'TYPE', 'ALGORITHM', 'DELIVERY_DATE', 'FIRSTNAME', 'FAMILYNAME',
+    'ADDRESS', 'POSTCODE', 'POSTOFFICE']
+
+  RETURN_URL_FIELDS = ['VERSION', 'STAMP', 'REFERENCE', 'PAYMENT', 'STATUS', 'ALGORITHM']
+
+  URL = 'https://payment.checkout.fi:443/'
+
+  DEFAULTS = {
+    'VERSION'       => '0001',
+    'STAMP'         => '', # Unique value
+    'AMOUNT'        => '',
+    'REFERENCE'     => '',
+    'MESSAGE'       => '',
+    'LANGUAGE'      => 'FI',
+    'RETURN'        => '',
+    'CANCEL'        => '',
+    'REJECT'        => '',
+    'DELAYED'       => '',
+    'COUNTRY'       => 'FIN',
+    'CURRENCY'      => 'EUR',
+    'DEVICE'        => '10', # 10 = XML
+    'CONTENT'       => '1',
+    'TYPE'          => '0',
+    'ALGORITHM'     => '3',
+    'DELIVERY_DATE' => '',
+    'FIRSTNAME'     => '',
+    'FAMILYNAME'    => '',
+    'ADDRESS'       => '',
+    'POSTCODE'      => '',
+    'POSTOFFICE'    => '',
+    'MAC'           => '',
+    'EMAIL'         => '',
+    'PHONE'         => ''
+  }
+
+  PAYER_DATA_FIELDS= ['FIRSTNAME', 'FAMILYNAME', 'ADDRESS', 'POSTCODE', 'POSTOFFICE', 'EMAIL', 'PHONE']
+
+  serialize :payer_data, Hash
+
+  validates :amount, presence: true, numericality:{ greater_than:0 }
+  validate :check_payer_data 
+
+  attr_accessor :merchant_data
+
+   # string merchant - Merchant ID
+   # string password - Merchant sercret key
+  def set_merchant_data(merchant_id, password)
+    @merchant_data = {
+        'MERCHANT'   => merchant_id,
+        'SECRET_KEY' => password
+    }
+  end
 
 
-  
-  # # def set_defaults(new_merchant, new_password) 
-  # #   self.merchant = new_merchant # merchant id
-  # #   self.password = new_password # security key (about 80 chars)
-  # #   DEFAULTS.each do |key,value|
-  # #     self.set_property(key,value)
-  # #   end
-  # # end
+  # Perform HTTP POST
+  def post(url, payload)
 
-  # def set_property(name, value)
-  #   prop_name = "@#{name}".to_sym # you need the property name, prefixed with a '@', as a symbol
-  #   self.instance_variable_set(prop_name, value)
-  # end
+    uri = URI.parse(url)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    request = Net::HTTP::Post.new(uri.request_uri)
+    request.set_form_data(payload)
+    puts "REQUEST #{request.inspect}"
+    response = http.request(request)    
+    puts "RESPONSE: #{response.inspect}"
+    return response    
 
-  # # generates MAC and prepares values for creating payment
+    # $options = array(
+    #     CURLOPT_POST           => 1,
+    #     CURLOPT_HEADER         => 0,
+    #     CURLOPT_URL            => $url,
+    #     CURLOPT_FRESH_CONNECT  => 1,
+    #     CURLOPT_RETURNTRANSFER => 1,
+    #     CURLOPT_FORBID_REUSE   => 1,
+    #     CURLOPT_TIMEOUT        => 20,
+    #     CURLOPT_POSTFIELDS     => http_build_query($payload)
+    # );
 
-  # def getCheckoutObject(data) 
-  #   #overwrite default values
-  #   data.each do |key,value| 
-  #     self.send(key) = value
-  #   end
+    # $ch = curl_init();
+    # curl_setopt_array($ch, $options);
+    # $result = curl_exec($ch);
+    # curl_close($ch);
 
-  #   mac_fields=%w( version stamp amount reference message language merchant return_ cancel reject delayed country currency device content type algorithm delivery_date firstname familyname address postcode postoffice password )
-  #   mac_string=mac_fields.map{|k| "{#{self.send(k)}}"}.join("+")
+    # return $result;
 
-  #   mac = Digest::MD5.hexdigest(mac_string).upcase 
+  end
+ 
 
-  #   post={}
-  #   DEFAULTS.keys do |key|
-  #     post['#{key.upcase}']=self.send(key)
-  #   end
-  #   post['RETURN']=post['_RETURN']
-  #   post.delete('_RETURN')
-  #   post.delete('STATUS')
-  #   post['MAC']=mac_string
+  # Get payment button XML
+  # Hash data  - hash containing non-default data
+  def get_payment_buttons(data)
+    post_data=self.get_data(data)
+    puts "POST DATA #{post_data.inspect}"
+    return self.post(URL, post_data)
+    #return self::post(self::$URL, $this->getData($data));
+  end
 
-  #   return post
-  # end
+  # Validate return URL signature
+  # array queryParams - Query string parameters from the return URL
+  def validate_return_url_signature(query_params)
+    hash_string=RETURN_URL_FIELDS.map { |field| query_params[field] }.join('&')
+    secure_hash=OpenSSL::HMAC.hexdigest("SHA256", hash_string, self.merchant_data['SECRET_KEY'])
+    puts hash_string
+    puts secure_hash
+    return query_params['MAC'] == secure_hash
+    # $hashString = join(
+    #     '&',
+    #     array_map(
+    #         function ($field) use (&$queryParams) {
+    #             return $queryParams[$field];
+    #         },
+    #         self::$RETURN_URL_FIELDS
+    #     )
+    # );
+    # $calculatedMac = strtoupper(hash_hmac('sha256', $hashString, $this->merchantData['SECRET_KEY']));
+    # return $calculatedMac === $queryParams['MAC'];
+  end
 
-  # # returns payment information in XML
-  # def getCheckoutXML(data) 
-  #   self.device = "10"
-  #   return self.sendPost(self.getCheckoutObject(data))
-  # end
+  # Merge defaults with given data, and calculate MAC for the data. 
+  # MAC calculation is done by joining all values in correct order using '+',
+  # and then calculating SHA-256 sum of the resulting string.
 
-  # def sendPost(post) 
-  #   http = Net::HTTP.new("payment.checkout.fi")
-  #   http.use_ssl = true
-  #   request = Net::HTTP::Post.new("/", {'Content-Type' => 'application/json'})
-  #   request.body = post.to_json
-  #   response = http.request(request)    
-  #   return response
-  # end
+  def get_data(data)
+    parameters = DEFAULTS.merge(data).merge({'MERCHANT' => self.merchant_data['MERCHANT']})
+    digest_string = MAC_FIELDS.map{ |field| parameters[field] }.join('+')
+    digest_string +="+"+self.merchant_data['SECRET_KEY']
+    parameters['MAC']=OpenSSL::Digest::SHA256.hexdigest(digest_string)
+    return parameters
+    # $parameters = array_merge(
+    #     self::$DEFAULTS,
+    #     $data,
+    #     array('MERCHANT' => $this->merchantData['MERCHANT'])
+    # );
+    # $hashString = join(
+    #     '+',
+    #     array_map(
+    #         function ($field) use (&$parameters) {
+    #             return $parameters[$field];
+    #         },
+    #         self::$MAC_FIELDS
+    #     )
+    # );
+    # // Calculate MAC
+    # $parameters['MAC'] = hash('sha256', $hashString . '+' . $this->merchantData['SECRET_KEY']);
+    # return $parameters;
+  end
 
-  # #string hash_hmac ( string $algo , string $data , string $key [, bool $raw_output = false ] )    
-  # #Digest::HMAC.hexdigest("data", "hash key", Digest::SHA1)
+  def check_payer_data
+    PAYER_DATA_FIELDS.each do |field|
+      errors.add(:payer_data, "field #{field.downcase} cannot be empty") if self.payer_data[field].blank?
+    end
+  end
 
-
-  # def validateCheckout(data) 
-  #   generatedMac=Digest::HMAC.hexdigest("{#{data['VERSION']}}&{#{data['STAMP']}}&{#{data['REFERENCE']}}&{#{data['PAYMENT']}}&{#{data['STATUS']}}&{#{data['ALGORITHM']}}", self.password, Digest::SHA256)
-  #   return data['MAC'] == generatedMac
-  # end
-
-
-  # def isPaid(status)
-  #   return [2, 4, 5, 6, 7, 8, 9, 10].includes?(status)
-  # end
+  def is_paid(status)
+    return [2, 4, 5, 6, 7, 8, 9, 10].includes?(status)
+  end
 
 end
