@@ -17,7 +17,8 @@ ActiveRecord::Schema.define(version: 20171008164446) do
     t.string "reference"
     t.decimal "amount", precision: 12, scale: 3
     t.integer "status", default: 0
-    t.string "authorization_code"
+    t.string "archive_id"
+    t.string "message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end

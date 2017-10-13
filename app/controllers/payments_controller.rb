@@ -1,7 +1,7 @@
 class PaymentsController < ApplicationController
   require "awesome_print"
 
-  before_action :set_payment, only: [:show, :edit, :update, :destroy, :checkout, :cancel]
+  before_action :set_payment, only: [:show, :destroy, :checkout, :cancel]
 
   # GET /payments
   # GET /payments.json
@@ -15,14 +15,8 @@ class PaymentsController < ApplicationController
     if !params['MAC'].nil? 
       @payment.set_merchant_data(375917, 'SAIPPUAKAUPPIAS')
       if @payment.validate_return_url_signature(params)
-        @result="Checkout transaction MAC CHECK OK, payment status =  "
-        if @payment.is_paid(params['STATUS']) 
-          @result += "Paid."
-          @payment.update(status:1)
-        else 
-          @result+= "Not paid."
-          @payment.update(status:2)
-        end
+        @result="Checkout transaction MAC CHECK OK, payment status: #{@payment.status_text} "
+        @payment.update(status:params['STATUS'].to_i, archive_id: params['PAYMENT'] )
       else 
         @result= "Checkout transaction MAC CHECK Failed."
       end
@@ -30,24 +24,17 @@ class PaymentsController < ApplicationController
   end
 
   def checkout
-    @order_data = {
-      'STAMP'         => @payment.id, # Unique timestamp
-      'REFERENCE'     => '12344',
-      'MESSAGE'       => "Furniture materials\nWoodworking tools",
-      'RETURN'        => payment_url(@payment),
-      'CANCEL'        => cancel_payment_url(@payment),
-      'AMOUNT'        => @payment.amount, # Price in cents
-      'DELIVERY_DATE' => Time.now.strftime('%Y%m%d'),
-    }
-    Payment::PAYER_DATA_FIELDS.each do |field|
-      @order_data[field]=@payment.payer_data[field]
-    end
-
     @payment.set_merchant_data(375917, 'SAIPPUAKAUPPIAS')
-    response=@payment.get_payment_buttons(@order_data)
-
-    @xml_hash=Hash.from_xml(response.body)
+    @payment.urls={'RETURN' => payment_url(@payment), 'CANCEL' => cancel_payment_url(@payment)}
+    response=@payment.get_payment_buttons
     @banks={}
+    begin
+      @xml_hash=Hash.from_xml(response.body)
+    rescue 
+      @error_text=response.body
+      @xml_hash={}
+      return
+    end 
     return unless trade=@xml_hash["trade"]
     return unless payments=trade["payments"]
     return unless payment=payments["payment"]
@@ -57,25 +44,44 @@ class PaymentsController < ApplicationController
 
   # GET /payments/new
   def new
-    @payment=Payment.new( amount: 1000, payer_data: {   
-      'FIRSTNAME'     => 'Matti',
-      'FAMILYNAME'    => 'Meikäläinen',
-      'ADDRESS'       => "Ääkköstie 5 b 3\nGround floor",
-      'POSTCODE'      => '33100',
-      'POSTOFFICE'    => 'Tampere',
+    payer_data={   
+      'FIRSTNAME'     => Faker::Name.first_name,
+      'FAMILYNAME'    => Faker::Name.last_name,
+      'ADDRESS'       => Faker::Address.street_address,
+      'POSTCODE'      => Faker::Address.postcode,
+      'POSTOFFICE'    => Faker::Address.city ,
       'EMAIL'         => 'support@checkout.fi',
-      'PHONE'         => '0800 552 010'
-    })     
+      'PHONE'         => Faker::PhoneNumber.phone_number
+    }
+    # payer_data={
+    #   'FIRSTNAME'     => 'Matti',
+    #   'FAMILYNAME'    => 'Meikäläinen',
+    #   'ADDRESS'       => "Ääkköstie 5 b 3\nGround floor",
+    #   'POSTCODE'      => '33100',
+    #   'POSTOFFICE'    => 'Tampere',
+    #   'EMAIL'         => 'support@checkout.fi',
+    #   'PHONE'         => '0800 552 010'      
+    # }
+    session[:price]=Faker::Commerce.price*100 
+    session[:reference]=Time.now.to_i
+    session[:message]=Faker::Commerce.product_name    
+
+    # session[:price]=1000 
+    # session[:reference]='12344'
+    # session[:message]="Furniture materials\nWoodworking tools"    
+
+    @payment=Payment.new( 
+      amount: session[:price], 
+      reference: session[:reference],
+      message: session[:message],
+      payer_data: payer_data)     
   end
 
-  # GET /payments/1/edit
-  def edit
-  end
 
   # POST /payments
   # POST /payments.json
   def create
-    @payment = Payment.new(amount: 1000)
+    @payment = Payment.new(amount: session[:price].to_i, reference: session['reference'], message: session['message'])
     Payment::PAYER_DATA_FIELDS.each do |field|
       @payment.payer_data[field]=params["payer_data_#{field.downcase}"]
     end
@@ -86,20 +92,6 @@ class PaymentsController < ApplicationController
         format.json { render :show, status: :created, location: @payment }
       else
         format.html { render :new }
-        format.json { render json: @payment.errors, status: :unprocessable_entity }
-      end
-    end
-  end
-
-  # PATCH/PUT /payments/1
-  # PATCH/PUT /payments/1.json
-  def update
-    respond_to do |format|
-      if @payment.update(payment_params)
-        format.html { redirect_to @payment, notice: 'Payment was successfully updated.' }
-        format.json { render :show, status: :ok, location: @payment }
-      else
-        format.html { render :edit }
         format.json { render json: @payment.errors, status: :unprocessable_entity }
       end
     end
@@ -116,6 +108,15 @@ class PaymentsController < ApplicationController
   end
 
   def cancel
+    if !params['MAC'].nil? 
+      @payment.set_merchant_data(375917, 'SAIPPUAKAUPPIAS')
+      if @payment.validate_return_url_signature(params)
+        @result="Checkout transaction MAC CHECK OK, payment status: #{@payment.status_text} "
+        @payment.update(status:params['STATUS'].to_i, archive_id: params['PAYMENT'] )
+      else 
+        @result= "Checkout transaction MAC CHECK Failed."
+      end
+    end    
   end
 
   private

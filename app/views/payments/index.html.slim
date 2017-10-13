@@ -1,26 +1,63 @@
 .row
   .col-md-12
-    .page-header 
-      h1 Payments
+    h1 Payments
+    p
+      br
+br
 - if @payments.count > 0
-  table.table.table-striped
-    thead
-      tr
-        th Payee
-        th Amount
-        th Success
-        th Authorization code
-        th colspan="3" 
-    tbody
-      - @payments.each do |payment| 
-        tr
-          td= payment.payer_data.inspect
-          td= payment.amount 
-          td= payment.status
-          td= payment.authorization_code 
-          td= link_to 'Show', payment 
-          td= link_to 'Edit', edit_payment_path(payment) 
-          td= link_to 'Destroy', payment, method: :delete, data:  { confirm: 'Are you sure?'  } 
+  .row.payment-header-row
+    .col-md-4
+      | Payer info
+    .col-md-4
+      | Purchase info
+    .col-md-2
+      | Payment info
+    .col-md-2    
+  - @payments.each_with_index do |payment,i| 
+    .row.payment-row class="payment-row-#{i}"
+      .col-md-4
+        p
+          b="Name"
+          br
+          ="#{payment.payer_data['FIRSTNAME']} #{payment.payer_data['FAMILYNAME']}"
+        p
+          b="Address"
+          br
+          ="#{payment.payer_data['ADDRESS']}"
+          br
+          =" #{payment.payer_data['POSTCODE']} #{payment.payer_data['POSTOFFICE']}"
+        p
+          b="Contact"
+          br
+          ="#{payment.payer_data['EMAIL']}"
+          br
+          ="#{payment.payer_data['Phone']}"   
+      .col-md-4
+        p
+          b="Product"
+          br        
+          = payment.message
+        p
+          b="Price"
+          br          
+          = "#{payment.amount/100} EUR"
+        p
+          b="Reference"
+          br            
+          = payment.reference
+      .col-md-2
+        p
+          b="Status"
+          br          
+          = "#{payment.status_text} (#{payment.status})"
+        p
+          b="Archive ID"
+          br          
+          = payment.archive_id.blank? ? "N/A" : payment.archive_id
+      .col-md-2
+        =link_to "Show", payment_path(payment), class: "btn btn-primary"
+        | &nbsp;
+        =link_to "Delete", payment, method: :delete, data: { confirm: 'Are you sure?'}, class: "btn btn-danger"
 -else
   i="No current payment in the system"
 .row

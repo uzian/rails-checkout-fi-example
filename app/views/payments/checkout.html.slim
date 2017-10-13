@@ -46,16 +46,21 @@ css:
     font-size: 8pt;
   }
 
-h1 Select your methof of payment
+h1 Select your method of payment
 
 - @banks.each do |bank_name, bank_attrs|
   .C1
     form action=bank_attrs['url'] method='post'
       -bank_attrs.each do |key,value|
-        input type='hidden' name=key value=value
+        input type='hidden' name=key value=html_escape(value)
       span
         input type='image' src=bank_attrs['icon']
       div
         = bank_attrs['name']
 br
-=@order_data.inspect
+hr style='clear: both;'
+- if !@error_text.blank?
+  .alert.alert-danger
+    ==@error_text
+  hr
+==ap @banks

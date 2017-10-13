@@ -1,24 +1,20 @@
 # README
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+This is an example of how to implements the checkout.fi API in rails.
+It is based on the example in php from checkout.fi (php code is left as comments in the 'payment' model)
 
-Things you may want to cover:
+Currently only the basic payment operation is implemented 
 
-* Ruby version
+* get the payment buttons
 
-* System dependencies
+* verify and process the response
 
-* Configuration
 
-* Database creation
+Things NOT yet covered:
 
-* Database initialization
+* SiS (Shop-in-shop)
 
-* How to run the test suite
+* Payment status query
 
-* Services (job queues, cache servers, search engines, etc.)
+* Credit card tokenization
 
-* Deployment instructions
-
-* ...

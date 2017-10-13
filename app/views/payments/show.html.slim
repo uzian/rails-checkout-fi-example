@@ -1,16 +1,63 @@
 .row
   .col-md-12
-    .page-header
-      h1="Payment Information"
+    h1="Payment Information"
+    p
+      br    
 
--@payment.payer_data.each do |key,value|
-  .row
-    .col-md-2
-      b= key.capitalize
-    .col-md-4
-      = value
-.row
-  .col-md-2
-    b Status
+.row.payment-header-row
   .col-md-4
-    = @result.nil? ? "Pending" : @result
+    | Payer info
+  .col-md-4
+    | Purchase info
+  .col-md-4
+    | Payment info
+  .col-md-1  
+- payment=@payment
+.row.payment-row 
+  .col-md-4
+    p
+      b="Name"
+      br
+      ="#{payment.payer_data['FIRSTNAME']} #{payment.payer_data['FAMILYNAME']}"
+    p
+      b="Address"
+      br
+      ="#{payment.payer_data['ADDRESS']}"
+      br
+      =" #{payment.payer_data['POSTCODE']} #{payment.payer_data['POSTOFFICE']}"
+    p
+      b="Contact"
+      br
+      ="#{payment.payer_data['EMAIL']}"
+      br
+      ="#{payment.payer_data['Phone']}"   
+  .col-md-4
+    p
+      b="Product"
+      br        
+      = payment.message
+    p
+      b="Price"
+      br          
+      = "#{payment.amount/100} EUR"
+    p
+      b="Reference"
+      br            
+      = payment.reference
+  .col-md-3
+    p
+      b="Status"
+      br          
+      = "#{payment.status_text} (#{payment.status})"
+    p
+      b="Archive ID"
+      br          
+      = payment.archive_id.blank? ? "N/A" : payment.archive_id
+  .col-md-1
+    a.btn.btn-danger href=payment_path(payment) method="delete" data-confirm='Are you sure?'
+      ="Delete"
+.row
+  .col-md-12
+    p
+      br
+      =link_to "Back", payments_path, class:"btn btn-default"
