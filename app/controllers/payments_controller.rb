@@ -117,6 +117,7 @@ class PaymentsController < ApplicationController
         @result= "Checkout transaction MAC CHECK Failed."
       end
     end    
+    render 'show'
   end
 
   private
