@@ -16,6 +16,7 @@
 class Payment < ApplicationRecord
 
   require 'openssl'
+  include SisXmlTemplate
 
   MAC_FIELDS = ['VERSION', 'STAMP', 'AMOUNT', 'REFERENCE', 'MESSAGE',
     'LANGUAGE', 'MERCHANT', 'RETURN', 'CANCEL', 'REJECT',
@@ -69,8 +70,9 @@ class Payment < ApplicationRecord
 
    # string merchant - Merchant ID
    # string password - Merchant sercret key
-  def set_merchant_data(merchant_id, password)
+  def set_merchant_data(merchant_id, password, aggregator_id=0)
     @merchant_data = {
+        'AGGREGATOR' => aggregator_id,
         'MERCHANT'   => merchant_id,
         'SECRET_KEY' => password
     }
@@ -119,6 +121,37 @@ class Payment < ApplicationRecord
     #return self::post(self::$URL, $this->getData($data));
   end
 
+  def sis_checkout
+    attrs={
+      :aggregator => self.merchant_data['AGGREGATOR'],
+      :reference => self.reference,
+      :description => self.message,
+      :stamp => Time.now.to_i,
+      :vat => 24,
+      :merchant_id => self.merchant_data['MERCHANT'],
+      :amount => (self.amount*100).to_i,
+      :buyer_firstname => self.payer_data['FIRSTNAME'], 
+      :buyer_familyname => self.payer_data['FAMILYNAME'],
+      :buyer_street => self.payer_data['ADDRESS'],
+      :buyer_postcode => self.payer_data['POSTCODE'],
+      :buyer_city => self.payer_data['POSTOFFICE'],
+      :buyer_country => 'FIN',
+      :buyer_email => self.payer_data['EMAIL'],
+      :buyer_phone => self.payer_data['PHONE'],
+      :buyer_language => 'FI',
+      :delivery_date => Time.now.strftime('%Y%m%d'),
+      :control_return => self.urls['RETURN'],
+      :control_reject => self.urls['CANCEL'],
+      :control_cancel => self.urls['CANCEL'],  
+    }
+    post_data={}
+    post_data['CHECKOUT_XML']=sis_request_xml(attrs)
+    puts post_data['CHECKOUT_XML']
+    post_data['CHECKOUT_XML']=Base64.encode64(post_data['CHECKOUT_XML'])
+    post_data['CHECKOUT_MAC']=OpenSSL::Digest::SHA256.hexdigest(post_data['CHECKOUT_XML']+'+'+self.merchant_data['SECRET_KEY']).upcase
+    return self.post(URL, post_data)
+  end
+
   # Validate return URL signature
   # array queryParams - Query string parameters from the return URL
   def validate_return_url_signature(query_params)
@@ -151,7 +184,7 @@ class Payment < ApplicationRecord
       'MESSAGE'       => self.message,
       'RETURN'        => self.urls['RETURN'],
       'CANCEL'        => self.urls['CANCEL'],
-      'AMOUNT'        => self.amount, # Price in cents
+      'AMOUNT'        => (self.amount*100).to_i, # Price in cents
       'DELIVERY_DATE' => Time.now.strftime('%Y%m%d'),
       'MERCHANT'      => self.merchant_data['MERCHANT']
     }

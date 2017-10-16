@@ -40,7 +40,7 @@ br
         p
           b="Price"
           br          
-          = "#{payment.amount/100} EUR"
+          = "#{payment.amount} EUR"
         p
           b="Reference"
           br            
@@ -65,5 +65,7 @@ br
     p
       br
     = link_to 'New Payment', new_payment_path, class: "btn btn-primary"
+    | &nbsp;
+    = link_to 'New SiS Payment', new_payment_path(sis:true), class: "btn btn-warning"
 
 

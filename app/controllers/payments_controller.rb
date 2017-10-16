@@ -24,14 +24,20 @@ class PaymentsController < ApplicationController
   end
 
   def checkout
-    @payment.set_merchant_data(375917, 'SAIPPUAKAUPPIAS')
     @payment.urls={'RETURN' => payment_url(@payment), 'CANCEL' => cancel_payment_url(@payment)}
-    response=@payment.get_payment_buttons
+    if session[:sis]==true
+      @payment.set_merchant_data(391830, 'SAIPPUAKAUPPIAS', 375917)
+      response=@payment.sis_checkout
+    else
+      @payment.set_merchant_data(375917, 'SAIPPUAKAUPPIAS')
+      response=@payment.get_payment_buttons
+    end      
+    logger.debug response.body
     @banks={}
     begin
       @xml_hash=Hash.from_xml(response.body)
     rescue 
-      @error_text=response.body
+      @error_text=response.body.force_encoding("UTF-8")
       @xml_hash={}
       return
     end 
@@ -62,9 +68,10 @@ class PaymentsController < ApplicationController
     #   'EMAIL'         => 'support@checkout.fi',
     #   'PHONE'         => '0800 552 010'      
     # }
-    session[:price]=Faker::Commerce.price*100 
+    session[:price]=Faker::Commerce.price
     session[:reference]=Time.now.to_i
     session[:message]=Faker::Commerce.product_name    
+    session[:sis]=!params[:sis].blank?
 
     # session[:price]=1000 
     # session[:reference]='12344'
@@ -74,21 +81,22 @@ class PaymentsController < ApplicationController
       amount: session[:price], 
       reference: session[:reference],
       message: session[:message],
-      payer_data: payer_data)     
+      payer_data: payer_data
+    )     
   end
 
 
   # POST /payments
   # POST /payments.json
   def create
-    @payment = Payment.new(amount: session[:price].to_i, reference: session['reference'], message: session['message'])
+    @payment = Payment.new(amount: session[:price], reference: session['reference'], message: session['message'])
     Payment::PAYER_DATA_FIELDS.each do |field|
       @payment.payer_data[field]=params["payer_data_#{field.downcase}"]
     end
 
     respond_to do |format|
       if @payment.save
-        format.html { redirect_to checkout_payment_path(@payment), notice: 'Payment proceeding' }
+        format.html { redirect_to checkout_payment_path(@payment), notice: 'Payment proceeding in mode '+ (session[:sis] ? "Shop-in-shop" : "Merchant")  }
         format.json { render :show, status: :created, location: @payment }
       else
         format.html { render :new }

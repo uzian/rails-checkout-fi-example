@@ -5,14 +5,12 @@ It is based on the example in php from checkout.fi (php code is left as comments
 
 Currently only the basic payment operation is implemented 
 
-* get the payment buttons
+* get the payment buttons (merchant or shop-in-shop mode)
 
 * verify and process the response
 
 
 Things NOT yet covered:
-
-* SiS (Shop-in-shop)
 
 * Payment status query
 

@@ -13,13 +13,18 @@
           .col-md-4 
             b="Price"
           .col-md-8
-            =@payment.amount.to_i/100
+            =@payment.amount
             |  EUR
         .row
           .col-md-4 
             b="Payment reference"
           .col-md-8
             =@payment.reference          
+        .row
+          .col-md-4 
+            b="Payment mode"
+          .col-md-8
+            = session[:sis] ? "Shop-in-shop" : "Merchant"
 
 
 = form_for @payment, :html => { :class => 'form' } do |f|
@@ -44,4 +49,4 @@
       br
       = f.submit "Proceed with payment", :class => 'btn btn-primary'
       | &nbsp;
-      = link_to "Cancel", root_path, class: "btn btn-danger"  
+      = link_to "Cancel", root_path, class: "btn btn-danger"        
