@@ -23,11 +23,12 @@ html lang="en"
         #navbar.navbar-collapse.collapse
           ul.nav.navbar-nav.navbar-right
             li.dropdown
-              a.dropdown-toggle data-toggle="dropdown" href="#" 
-                = "Menu"
-                ul.dropdown-menu aria-labelledby="courses" 
-                  li= link_to "Item1", root_path
-                  li= link_to "Item2", root_path
+              a#payments.dropdown-toggle data-toggle="dropdown" href="#"  
+                = "Payments"
+                ul.dropdown-menu aria-labelledby="payments" 
+                  li= link_to "List payments", payments_path
+                  li= link_to "New payment", new_payment_path
+                  li= link_to "New SiS payment", new_payment_path(sis:true)
     .container
       -if flash.any?
         -flash.each do |key, value|

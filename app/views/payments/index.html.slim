@@ -8,11 +8,11 @@ br
   .row.payment-header-row
     .col-md-4
       | Payer info
-    .col-md-4
+    .col-md-3
       | Purchase info
     .col-md-2
       | Payment info
-    .col-md-2    
+    .col-md-3    
   - @payments.each_with_index do |payment,i| 
     .row.payment-row class="payment-row-#{i}"
       .col-md-4
@@ -32,7 +32,7 @@ br
           ="#{payment.payer_data['EMAIL']}"
           br
           ="#{payment.payer_data['Phone']}"   
-      .col-md-4
+      .col-md-3
         p
           b="Product"
           br        
@@ -54,9 +54,12 @@ br
           b="Archive ID"
           br          
           = payment.archive_id.blank? ? "N/A" : payment.archive_id
-      .col-md-2
+      .col-md-3
         =link_to "Show", payment_path(payment), class: "btn btn-primary"
         | &nbsp;
+        - if !payment.is_paid?
+          =link_to "Retry", checkout_payment_path(payment), class: "btn btn-warning"
+          | &nbsp;        
         =link_to "Delete", payment, method: :delete, data: { confirm: 'Are you sure?'}, class: "btn btn-danger"
 -else
   i="No current payment in the system"
